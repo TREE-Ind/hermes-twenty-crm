@@ -1,9 +1,14 @@
 name: twenty-crm
-version: 0.1.0
-description: "Generic Twenty CRM tools for Hermes Agent: REST, GraphQL, workspace discovery, and live schema introspection."
+version: 0.2.0
+description: "Twenty CRM for Hermes Agent with managed self-hosting, external-instance connectivity, REST, GraphQL, and live schema introspection."
 author: "TREE Industries"
 provides_tools:
   - twenty_describe_workspace
   - twenty_rest
   - twenty_graphql
   - twenty_schema
+provides_hooks:
+  - on_session_start
+  - pre_tool_call
+provides_commands:
+  - twenty

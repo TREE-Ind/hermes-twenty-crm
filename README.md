@@ -1,87 +1,114 @@
 # Hermes Twenty CRM
 
-A generic [Hermes Agent](https://hermes-agent.nousresearch.com/) plugin for [Twenty CRM](https://twenty.com/). It provides safe, schema-aware building blocks for any Twenty Cloud or self-hosted workspace:
+[Hermes Agent](https://hermes-agent.nousresearch.com/) integration for [Twenty CRM](https://twenty.com/). It gives Hermes live CRM tools and can run a self-hosted Twenty stack automatically, or connect to an existing Twenty Cloud, local-network, VPN, or remote deployment.
 
-- `twenty_describe_workspace` — inspect endpoints, configured auth, and OAuth discovery
-- `twenty_rest` — call Twenty REST endpoints
-- `twenty_graphql` — call core or metadata GraphQL endpoints
-- `twenty_schema` — introspect the live GraphQL schema before writing queries or mutations
+## What Hermes can do
 
-This project intentionally contains **no company-specific data, custom objects, pricing, CRM seed data, Docker stack, or local-runtime automation**.
+The plugin registers a `twenty` toolset:
+
+- `twenty_describe_workspace` — inspect connection mode, endpoints, available authentication, and OAuth discovery
+- `twenty_rest` — use Twenty REST endpoints
+- `twenty_graphql` — use the core-record or metadata GraphQL API
+- `twenty_schema` — inspect the workspace's live schema before creating queries or mutations
+- `/twenty` — inspect, bootstrap, start, stop, and diagnose a managed runtime
+
+It also includes a bundled **Twenty CRM skill** that guides schema-aware record, metadata, workflow, view, and dashboard work.
 
 ## Install
 
-Hermes discovers directory plugins from `~/.hermes/plugins/`.
+Hermes loads directory plugins from `~/.hermes/plugins/`:
 
 ```bash
 git clone https://github.com/TREE-Ind/hermes-twenty-crm.git ~/.hermes/plugins/twenty-crm
 ```
 
-Restart Hermes or start a new session. The plugin registers a `twenty` toolset.
+Restart Hermes or start a new session. The plugin's managed mode starts only when Twenty tools are used (and at session start when autostart is enabled).
 
-## Configure
+## Connection modes
 
-Copy the example values into your Hermes environment (`~/.hermes/.env`, or your deployment's equivalent). For self-hosted Twenty, set `TWENTY_BASE_URL`; for Twenty Cloud, omit it.
+### Managed self-hosting — default
+
+Managed mode bootstraps and maintains Twenty, PostgreSQL, and Redis through Docker Compose. The stack is isolated at `~/.hermes/projects/twenty-crm`, binds only to `127.0.0.1:3000` by default, and keeps generated application/database secrets in that project's ignored `.env` file.
+
+Prerequisite: Docker Desktop or Docker Engine with Docker Compose.
 
 ```dotenv
-# TWENTY_BASE_URL=https://crm.example.com
+TWENTY_CONNECTION_MODE=managed
+TWENTY_MANAGED_AUTOSTART=true
+TWENTY_MANAGED_BIND_HOST=127.0.0.1
+TWENTY_MANAGED_PORT=3000
+```
+
+First run is seamless: ask Hermes to inspect the workspace or use `/twenty start`. Once Twenty is healthy, open `http://127.0.0.1:3000`, create a Twenty API key, and save it in Hermes' environment:
+
+```dotenv
 TWENTY_API_KEY=replace-with-a-twenty-api-key
 ```
 
-The plugin supports one of these authentication options, in order when `auth_mode=auto`:
+Runtime commands:
+
+```text
+/twenty status
+/twenty bootstrap
+/twenty start
+/twenty logs 120
+/twenty stop
+/twenty doctor
+```
+
+### Connect to an existing instance
+
+Use external mode when Twenty is already running—on the same machine, a private LAN, a VPN/Tailscale network, a hosted server, or Twenty Cloud. Hermes never starts or stops that instance.
+
+```dotenv
+TWENTY_CONNECTION_MODE=external
+TWENTY_BASE_URL=https://crm.example.com
+TWENTY_API_KEY=replace-with-a-twenty-api-key
+```
+
+Examples:
+
+```dotenv
+# Local network
+TWENTY_BASE_URL=http://192.168.1.42:3000
+
+# Private remote network, such as Tailscale
+TWENTY_BASE_URL=https://crm.tailnet-name.ts.net
+
+# Twenty Cloud
+TWENTY_BASE_URL=https://api.twenty.com
+```
+
+## Authentication
+
+`auth_mode=auto` chooses the first configured option:
 
 1. `TWENTY_API_KEY`
 2. `TWENTY_ACCESS_TOKEN`
-3. `TWENTY_CLIENT_ID` plus `TWENTY_CLIENT_SECRET` (OAuth client credentials)
+3. `TWENTY_CLIENT_ID` plus `TWENTY_CLIENT_SECRET` for OAuth client credentials
 
-Optional settings:
+Optional:
 
 ```dotenv
 TWENTY_OAUTH_SCOPE=api
 TWENTY_TIMEOUT_SECONDS=30
 ```
 
-## Usage
+## How Hermes works safely with Twenty
 
-Start with a prompt such as:
+Twenty schemas vary by workspace. For a new workspace or any metadata change, Hermes should call `twenty_schema` before it assumes object names, field names, input types, or enum values. Use REST for known straightforward endpoints and GraphQL for schema-aware records, relations, metadata, views, dashboards, and workflows.
 
-> Inspect my Twenty workspace and list the available CRM objects.
-
-For tenant-specific tasks, call `twenty_schema` before creating queries or mutations. Twenty generates schemas per workspace, so assuming object and field names is unsafe.
-
-### Example GraphQL call
-
-```json
-{
-  "query": "query { companies(first: 5) { edges { node { id name } } } }",
-  "api": "core"
-}
-```
-
-### Example REST call
-
-```json
-{
-  "path": "/rest/companies",
-  "method": "GET"
-}
-```
+Keep credentials in Hermes environment files; do not commit them. The plugin never returns authorization headers, and cached OAuth tokens remain local to the Hermes cache directory.
 
 ## Development
 
-The plugin has no runtime dependency beyond Python's standard library.
+The runtime uses Python's standard library.
 
 ```bash
-python -m pytest
-python -m compileall -q .
+uv run --with pytest pytest -q
+python -m py_compile __init__.py runtime.py schemas.py tools.py
+uv build
 ```
-
-## Security
-
-- Keep credentials in Hermes environment files, not plugin source or commits.
-- The plugin redacts authorization headers by never returning request headers.
-- OAuth access tokens are cached locally under Hermes' cache directory and are never returned by tools.
-- Use least-privilege Twenty API keys and rotate them regularly.
 
 ## License
 

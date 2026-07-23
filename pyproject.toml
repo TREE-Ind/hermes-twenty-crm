@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hermes-twenty-crm"
-version = "0.1.0"
-description = "Generic Twenty CRM plugin for Hermes Agent"
+version = "0.2.0"
+description = "Twenty CRM plugin for Hermes Agent"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -20,7 +20,7 @@ classifiers = [
 test = ["pytest>=8"]
 
 [tool.setuptools]
-py-modules = ["schemas", "tools"]
+py-modules = ["runtime", "schemas", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

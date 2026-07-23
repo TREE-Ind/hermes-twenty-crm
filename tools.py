@@ -1,8 +1,4 @@
-"""Generic Twenty API client and Hermes tool handlers.
-
-The plugin deliberately contains no workspace-specific objects, workflows,
-branding, pricing, seed data, or local Docker runtime management.
-"""
+"""Twenty API client and Hermes tool handlers."""
 
 from __future__ import annotations
 
@@ -14,6 +10,11 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urljoin
 from urllib.request import Request, urlopen
+
+try:
+    from . import runtime
+except ImportError:  # Direct-file loading used by Hermes and test runners.
+    import runtime  # type: ignore[no-redef]
 
 DEFAULT_BASE_URL = "https://api.twenty.com"
 DEFAULT_TIMEOUT_SECONDS = 30.0
@@ -53,10 +54,7 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 
 def _base_url() -> str:
-    value = _env("TWENTY_BASE_URL", DEFAULT_BASE_URL) or DEFAULT_BASE_URL
-    if not value.startswith(("https://", "http://")):
-        value = f"https://{value}"
-    return value.rstrip("/")
+    return runtime.base_url().rstrip("/")
 
 
 def _timeout() -> float:
@@ -173,7 +171,7 @@ def _request(method: str, path: str, *, params: dict[str, Any] | None = None, bo
 
 def twenty_describe_workspace(args: dict[str, Any], **_: Any) -> str:
     include_discovery = args.get("include_oauth_discovery", True)
-    result: dict[str, Any] = {"success": True, "base_url": _base_url(), "graphql_endpoint": _url("/graphql"), "metadata_graphql_endpoint": _url("/metadata"), "rest_base": _url("/rest/"), "configured_auth_modes": _configured_auth_modes(), "timeout_seconds": _timeout()}
+    result: dict[str, Any] = {"success": True, "connection": runtime.status(), "base_url": _base_url(), "graphql_endpoint": _url("/graphql"), "metadata_graphql_endpoint": _url("/metadata"), "rest_base": _url("/rest/"), "configured_auth_modes": _configured_auth_modes(), "timeout_seconds": _timeout()}
     try:
         _, mode, source = _auth(args.get("auth_mode", "auto"))
         result.update({"active_auth_mode": mode, "token_source": source})
